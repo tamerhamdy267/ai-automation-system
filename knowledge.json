@@ -1,0 +1,8 @@
+{ 
+    "refund_policy": "Customers can request a refund within 30 days of purchase. Refund requests after 30 days require human review.", 
+    "support_hours": "Customer support is available Monday to Friday from 9 AM to 5 PM.", 
+    "pricing": "Pricing depends on the customer's specific requirements. Customers can contact the sales team for a detailed quote.", 
+    "enterprise_plan": "Enterprise customers should contact the sales team to discuss their specific requirements.", 
+    "api_support": "For API problems, customers should provide the API endpoint, error message, and relevant non-sensitive troubleshooting details. Never request passwords, API keys, access tokens, or other credentials.", 
+    "order_support": "For order-related questions, customers can contact customer support for assistance with their order. Customers should provide their order number and relevant non-sensitive details. Never request passwords, API keys, access tokens, or other credentials."
+}

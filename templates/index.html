@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Customer Support</title>
+</head>
+
+<body>
+
+    <h1>Customer Support</h1>
+
+    <textarea
+        id="message"
+        rows="5"
+        cols="50"
+        placeholder="Type your message..."
+    ></textarea>
+
+    <br><br>
+
+    <button onclick="sendMessage()">Send</button>
+
+    <h2>Response</h2>
+
+    <p id="response">Waiting for message...</p>
+
+    <script>
+
+        async function sendMessage() {
+
+            const message = document.getElementById("message").value;
+            const responseBox = document.getElementById("response");
+
+            if (!message.trim()) {
+                responseBox.innerText = "Please enter a message.";
+                return;
+            }
+
+            responseBox.innerText = "Processing...";
+
+            try {
+
+                const response = await fetch("/message", {
+
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+
+                    body: JSON.stringify({
+                        message: message
+                    })
+
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    responseBox.innerText =
+                        "Server error: " + JSON.stringify(data);
+                    return;
+                }
+
+                responseBox.innerText = data.response;
+
+            } catch (error) {
+
+                console.error(error);
+
+                responseBox.innerText =
+                    "Connection error: " + error;
+
+            }
+        }
+
+    </script>
+
+</body>
+</html>
