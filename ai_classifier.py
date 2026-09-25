@@ -35,6 +35,7 @@ def classify_text(text):
         "problem",
         "issue",
         "not working",
+        "support",
         "help",
         "cancel",
         "return"

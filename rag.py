@@ -1,13 +1,20 @@
 import json
-import requests
+import os
 import re
+import requests
 
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
+from dotenv import load_dotenv
 
 
-# Load embedding model
-model = SentenceTransformer("all-MiniLM-L6-v2")
+load_dotenv()
+
+
+OLLAMA_PROXY_URL = os.getenv(
+    "OLLAMA_PROXY_URL",
+    "http://127.0.0.1:8000/generate"
+)
+
+OLLAMA_PROXY_KEY = os.getenv("OLLAMA_PROXY_KEY")
 
 
 # Load company knowledge
@@ -17,23 +24,36 @@ with open("knowledge.json", "r", encoding="utf-8") as file:
 
 def retrieve_knowledge(question):
 
-    question_embedding = model.encode([question])
+    question_words = set(
+        re.findall(r"\b[a-zA-Z0-9]+\b", question.lower())
+    )
 
     best_key = None
-    best_score = -1
+    best_score = 0
 
     for key, value in knowledge.items():
 
-        knowledge_embedding = model.encode([value])
+        knowledge_text = f"{key} {value}".lower()
 
-        score = cosine_similarity(
-            question_embedding,
-            knowledge_embedding
-        )[0][0]
+        knowledge_words = set(
+            re.findall(r"\b[a-zA-Z0-9]+\b", knowledge_text)
+        )
+
+        common_words = question_words.intersection(
+            knowledge_words
+        )
+
+        score = len(common_words)
 
         if score > best_score:
+
             best_score = score
             best_key = key
+
+    if best_key is None:
+
+        best_key = "support_hours"
+        best_score = 0
 
     return {
         "key": best_key,
@@ -41,31 +61,33 @@ def retrieve_knowledge(question):
         "score": best_score
     }
 
+
 def deterministic_refund_response(question):
 
-        question_lower = question.lower()
+    question_lower = question.lower()
 
-        match = re.search(
-            r"(\d+)\s*days?",
-            question_lower
-        )
+    match = re.search(
+        r"(\d+)\s*days?",
+        question_lower
+    )
 
-        if not match:
-            return None
+    if not match:
+        return None
 
-        days = int(match.group(1))
+    days = int(match.group(1))
 
-        if days > 30:
-
-            return (
-                "Your refund request is outside the stated "
-                "30-day refund period and requires human review."
-            )
+    if days > 30:
 
         return (
-            "Your refund request is within the stated "
-            "30-day refund period."
+            "Your refund request is outside the stated "
+            "30-day refund period and requires human review."
         )
+
+    return (
+        "Your refund request is within the stated "
+        "30-day refund period."
+    )
+
 
 def generate_grounded_response(question, category):
 
@@ -79,10 +101,11 @@ def generate_grounded_response(question, category):
             "similarity_score": 1.0
         }
 
-    
+
     retrieved = retrieve_knowledge(question)
 
     company_information = retrieved["content"]
+
 
     if retrieved["key"] == "pricing":
 
@@ -97,30 +120,32 @@ Do NOT say that there is not enough information.
 Do NOT invent a price.
 """
 
+
     elif retrieved["key"] == "refund_policy":
 
         instruction = """
-    The customer is asking about a refund.
+The customer is asking about a refund.
 
-    The company policy is exactly:
-    Customers can request a refund within 30 days of purchase.
-    Refund requests after 30 days require human review.
+The company policy is exactly:
+Customers can request a refund within 30 days of purchase.
+Refund requests after 30 days require human review.
 
-    If the customer's request is after 30 days:
-    - State that the request is outside the 30-day period.
-    - State that it requires human review.
-    - Do NOT say the refund is denied.
-    - Do NOT say the refund cannot be processed.
-    - Do NOT say approval is required.
-    - Do NOT invent a timeline.
-    - Do NOT invent next steps.
+If the customer's request is after 30 days:
+- State that the request is outside the 30-day period.
+- State that it requires human review.
+- Do NOT say the refund is denied.
+- Do NOT say the refund cannot be processed.
+- Do NOT say approval is required.
+- Do NOT invent a timeline.
+- Do NOT invent next steps.
 
-    If the customer's request is within 30 days:
-    - State that the request is within the stated 30-day period.
-    - Do NOT guarantee that the refund will be approved or issued.
+If the customer's request is within 30 days:
+- State that the request is within the stated 30-day period.
+- Do NOT guarantee that the refund will be approved or issued.
 
-    Use only the policy above.
-    """
+Use only the policy above.
+"""
+
 
     elif retrieved["key"] == "support_hours":
 
@@ -130,6 +155,7 @@ The customer is asking about support hours.
 State the support hours exactly as provided.
 """
 
+
     elif retrieved["key"] == "enterprise_plan":
 
         instruction = """
@@ -137,34 +163,38 @@ The customer is asking about the enterprise plan.
 
 Explain that enterprise customers should contact the sales team
 to discuss their specific requirements.
+
 Do not invent enterprise features or pricing.
 """
+
 
     elif retrieved["key"] == "api_support":
 
         instruction = """
-    The customer has an API-related issue.
+The customer has an API-related issue.
 
-    Explain that they can provide the API endpoint, error message,
-    and relevant non-sensitive troubleshooting details.
+Explain that they can provide the API endpoint, error message,
+and relevant non-sensitive troubleshooting details.
 
-    Never request passwords, API keys, access tokens, or credentials.
-    """
+Never request passwords, API keys, access tokens, or credentials.
+"""
+
 
     elif retrieved["key"] == "order_support":
 
         instruction = """
-    The customer is asking about an order.
+The customer is asking about an order.
 
-    Explain that customer support can assist with order-related questions.
-    The customer may provide their order number and relevant non-sensitive
-    details.
+Explain that customer support can assist with order-related questions.
+The customer may provide their order number and relevant non-sensitive
+details.
 
-    Do not invent order status, delivery dates, refund decisions, prices,
-    or other information that is not provided.
+Do not invent order status, delivery dates, refund decisions, prices,
+or other information that is not provided.
 
-    Never request passwords, API keys, access tokens, or credentials.
-    """
+Never request passwords, API keys, access tokens, or credentials.
+"""
+
 
     else:
 
@@ -208,13 +238,16 @@ General rules:
 - Do not include a signature.
 """
 
+
     response = requests.post(
-        "http://localhost:11434/api/generate",
+        OLLAMA_PROXY_URL,
+        headers={
+            "X-Proxy-Key": OLLAMA_PROXY_KEY
+        },
         json={
-            "model": "llama3.2",
-            "prompt": prompt,
-            "stream": False
-        }
+            "prompt": prompt
+        },
+        timeout=120
     )
 
     response.raise_for_status()
@@ -224,3 +257,4 @@ General rules:
         "knowledge_key": retrieved["key"],
         "similarity_score": retrieved["score"]
     }
+
