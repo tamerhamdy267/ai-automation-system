@@ -4,28 +4,14 @@ from dotenv import load_dotenv
 from waitress import serve
 
 from webhook_server import app
-
+from database import initialize_database
 
 load_dotenv()
 
+initialize_database()
 
-HOST = os.getenv(
-    "SERVER_HOST",
-    "0.0.0.0"
-)
-
-PORT = int(
-    os.getenv(
-        "PORT",
-        os.getenv("SERVER_PORT", "5000")
-    )
-)
-
+HOST = os.getenv("SERVER_HOST", "0.0.0.0")
+PORT = int(os.getenv("PORT", os.getenv("SERVER_PORT", "5000")))
 
 if __name__ == "__main__":
-
-    serve(
-        app,
-        host=HOST,
-        port=PORT
-    )
+    serve(app, host=HOST, port=PORT)
