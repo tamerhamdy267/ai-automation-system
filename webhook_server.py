@@ -93,9 +93,11 @@ def receive_message():
     provided_api_key = request.headers.get("X-API-Key")
 
     if not API_KEY or provided_api_key != API_KEY:
-
         return jsonify({
-            "error": "Unauthorized"
+            "error": "Unauthorized",
+            "server_key_loaded": bool(API_KEY),
+            "server_key_length": len(API_KEY) if API_KEY else 0,
+            "provided_key_length": len(provided_api_key) if provided_api_key else 0
         }), 401
 
 
