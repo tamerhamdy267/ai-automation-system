@@ -8,7 +8,9 @@ from database import get_pending_escalations
 from database import resolve_escalation
 from database import is_message_processed
 from database import mark_message_processed
+from database import initialize_database
 
+initialize_database()
 
 load_dotenv()
 
