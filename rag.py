@@ -14,7 +14,7 @@ OLLAMA_PROXY_URL = os.getenv(
     "http://127.0.0.1:8000/generate"
 )
 
-OLLAMA_PROXY_KEY = os.getenv("OLLAMA_PROXY_KEY")
+OLLAMA_PROXY_KEY = os.getenv("OLLAMA_PROXY_KEY", "").strip()
 
 
 # Load company knowledge
