@@ -1,5 +1,4 @@
 import os
-import traceback
 
 from flask import Flask, request, jsonify, render_template, redirect
 from dotenv import load_dotenv
@@ -176,7 +175,7 @@ def receive_message():
     except Exception as error:
 
         print("Automation error:", error)
-        traceback.print_exc()
+    
 
         return jsonify({
             "response": (
