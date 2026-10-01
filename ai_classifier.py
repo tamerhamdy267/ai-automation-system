@@ -53,13 +53,20 @@ def classify_text(text):
         "500"
     ]
 
-    if any(word in text_lower for word in sales_keywords):
+
+    def matches_keyword(keyword):
+        if " " in keyword:
+            return keyword in text_lower
+
+        return re.search(r"\b" + re.escape(keyword) + r"\b", text_lower) is not None
+
+    if any(matches_keyword(word) for word in sales_keywords):
         return "Sales"
 
-    if any(word in text_lower for word in support_keywords):
+    if any(matches_keyword(word) for word in support_keywords):
         return "Support"
 
-    if any(word in text_lower for word in technical_keywords):
+    if any(matches_keyword(word) for word in technical_keywords):
         return "Technical"
 
     return "Other"
