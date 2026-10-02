@@ -22,11 +22,63 @@ with open("knowledge.json", "r", encoding="utf-8") as file:
     knowledge = json.load(file)
 
 
+# Words that are too common to be useful for knowledge retrieval
+STOP_WORDS = {
+    "a", "an", "and", "are", "as", "at", "be", "can", "could",
+    "do", "does", "for", "from", "get", "has", "have", "how",
+    "i", "if", "in", "is", "it", "me", "my", "of", "on", "or",
+    "our", "please", "the", "this", "to", "was", "we", "what",
+    "when", "where", "which", "with", "you", "your"
+}
+
+
+# Strong topic-specific words
+KEYWORDS = {
+    "pricing": {
+        "price", "prices", "pricing", "cost", "costs",
+        "buy", "purchase", "quote", "quotes", "discount",
+        "plan", "plans", "custom"
+    },
+
+    "support_hours": {
+        "hours", "hour", "open", "closed", "available",
+        "availability", "monday", "friday"
+    },
+
+    "refund_policy": {
+        "refund", "refunds", "money", "purchase", "return",
+        "days", "30"
+    },
+
+    "enterprise_plan": {
+        "enterprise", "business", "company", "companies"
+    },
+
+    "api_support": {
+        "api", "endpoint", "error", "errors", "500",
+        "technical", "code", "server", "bug"
+    },
+
+    "order_support": {
+        "order", "orders", "order_number", "delivery",
+        "shipping", "shipment"
+    }
+}
+
+
+def tokenize(text):
+    words = re.findall(r"\b[a-zA-Z0-9]+\b", text.lower())
+
+    return {
+        word
+        for word in words
+        if word not in STOP_WORDS
+    }
+
+
 def retrieve_knowledge(question):
 
-    question_words = set(
-        re.findall(r"\b[a-zA-Z0-9]+\b", question.lower())
-    )
+    question_words = tokenize(question)
 
     best_key = None
     best_score = 0
@@ -34,24 +86,30 @@ def retrieve_knowledge(question):
     for key, value in knowledge.items():
 
         knowledge_text = f"{key} {value}".lower()
+        knowledge_words = tokenize(knowledge_text)
 
-        knowledge_words = set(
-            re.findall(r"\b[a-zA-Z0-9]+\b", knowledge_text)
-        )
-
+        # Basic overlap
         common_words = question_words.intersection(
             knowledge_words
         )
 
         score = len(common_words)
 
-        if score > best_score:
+        # Strong topic keywords receive additional weight
+        topic_keywords = KEYWORDS.get(key, set())
 
+        keyword_matches = question_words.intersection(
+            topic_keywords
+        )
+
+        score += len(keyword_matches) * 3
+
+        if score > best_score:
             best_score = score
             best_key = key
 
+    # Safe fallback
     if best_key is None:
-
         best_key = "support_hours"
         best_score = 0
 
@@ -77,7 +135,6 @@ def deterministic_refund_response(question):
     days = int(match.group(1))
 
     if days > 30:
-
         return (
             "Your refund request is outside the stated "
             "30-day refund period and requires human review."
@@ -94,18 +151,15 @@ def generate_grounded_response(question, category):
     refund_response = deterministic_refund_response(question)
 
     if refund_response:
-
         return {
             "response": refund_response,
             "knowledge_key": "refund_policy",
             "similarity_score": 1.0
         }
 
-
     retrieved = retrieve_knowledge(question)
 
     company_information = retrieved["content"]
-
 
     if retrieved["key"] == "pricing":
 
@@ -119,7 +173,6 @@ requirements and that the sales team can provide a detailed quote.
 Do NOT say that there is not enough information.
 Do NOT invent a price.
 """
-
 
     elif retrieved["key"] == "refund_policy":
 
@@ -146,7 +199,6 @@ If the customer's request is within 30 days:
 Use only the policy above.
 """
 
-
     elif retrieved["key"] == "support_hours":
 
         instruction = """
@@ -154,7 +206,6 @@ The customer is asking about support hours.
 
 State the support hours exactly as provided.
 """
-
 
     elif retrieved["key"] == "enterprise_plan":
 
@@ -167,7 +218,6 @@ to discuss their specific requirements.
 Do not invent enterprise features or pricing.
 """
 
-
     elif retrieved["key"] == "api_support":
 
         instruction = """
@@ -178,7 +228,6 @@ and relevant non-sensitive troubleshooting details.
 
 Never request passwords, API keys, access tokens, or credentials.
 """
-
 
     elif retrieved["key"] == "order_support":
 
@@ -195,13 +244,11 @@ or other information that is not provided.
 Never request passwords, API keys, access tokens, or credentials.
 """
 
-
     else:
 
         instruction = """
 Answer using only the company information provided.
 """
-
 
     prompt = f"""
 You are a customer support AI assistant.
@@ -238,7 +285,6 @@ General rules:
 - Do not include a signature.
 """
 
-
     response = requests.post(
         OLLAMA_PROXY_URL,
         headers={
@@ -257,4 +303,3 @@ General rules:
         "knowledge_key": retrieved["key"],
         "similarity_score": retrieved["score"]
     }
-
