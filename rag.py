@@ -62,6 +62,11 @@ KEYWORDS = {
     "order_support": {
         "order", "orders", "order_number", "delivery",
         "shipping", "shipment"
+    },
+    "security_incident": {
+        "security","breach","production",
+        "database","data loss","unauthorized access",
+        "hack"
     }
 }
 

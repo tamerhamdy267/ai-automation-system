@@ -4,5 +4,6 @@
     "pricing": "Pricing depends on the customer's specific requirements. Customers can contact the sales team for a detailed quote.", 
     "enterprise_plan": "Enterprise customers should contact the sales team to discuss their specific requirements.", 
     "api_support": "For API problems, customers should provide the API endpoint, error message, and relevant non-sensitive troubleshooting details. Never request passwords, API keys, access tokens, or other credentials.", 
-    "order_support": "For order-related questions, customers can contact customer support for assistance with their order. Customers should provide their order number and relevant non-sensitive details. Never request passwords, API keys, access tokens, or other credentials."
+    "order_support": "For order-related questions, customers can contact customer support for assistance with their order. Customers should provide their order number and relevant non-sensitive details. Never request passwords, API keys, access tokens, or other credentials.",
+    "security_incident": "Potential security incidents involving breaches, production systems, databases, data loss, or unauthorized access require immediate human review. Do not request or share passwords, API keys, access tokens, or other credentials."
 }

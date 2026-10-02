@@ -1,6 +1,7 @@
 import json
 import re
-
+from datetime import datetime
+import uuid
 from workflows import sales_workflow
 from workflows import support_workflow
 from workflows import technical_workflow
@@ -170,22 +171,37 @@ def run_automation(
             needs_human = True
 
     elif category == "Technical":
-
-        action = "Send to Technical workflow"
-
-        response = technical_workflow.run(text)
-
         text_lower = text.lower()
 
-        if any(word in text_lower for word in [
+        security_issue = any(word in text_lower for word in [
             "security",
             "data loss",
             "production",
             "database",
             "hack",
-            "breach"
-        ]):
+            "breach",
+            "unauthorized access"
+        ])
+
+        if security_issue:
+            action = "Escalate to human"
             needs_human = True
+            response = {
+                "request_id": str(uuid.uuid4()),
+                "timestamp": datetime.now().isoformat(timespec="seconds"),
+                "customer_message": text,
+                "response": (
+                    "This message involves a potential security incident "
+                    "and has been escalated for human review. "
+                    "Please do not share passwords, API keys, access tokens, "
+                    "or other credentials."
+                ),
+                "knowledge_key": "security_incident",
+                "similarity_score": 1.0
+            }
+        else:
+            action = "Send to Technical workflow"
+            response = technical_workflow.run(text)
 
     else:
 
