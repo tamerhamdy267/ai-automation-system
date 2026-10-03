@@ -61,11 +61,11 @@ def classify_text(text):
 
         return re.search(r"\b" + re.escape(keyword) + r"\b", text_lower) is not None
 
-    if any(matches_keyword(word) for word in sales_keywords):
-        return "Sales"
-
     if any(matches_keyword(word) for word in support_keywords):
         return "Support"
+
+    if any(matches_keyword(word) for word in sales_keywords):
+        return "Sales"
 
     if any(matches_keyword(word) for word in technical_keywords):
         return "Technical"
