@@ -72,6 +72,62 @@ def classify_text(text):
 
     return "Other"
 
+def should_escalate(category, text):
+    text_lower = text.lower()
+
+    if category == "Sales":
+        return any(word in text_lower for word in [
+            "price",
+            "cost",
+            "pricing",
+            "buy",
+            "purchase",
+            "quote",
+            "plan",
+            "discount",
+            "negotiate",
+            "contract",
+            "custom",
+            "enterprise"
+        ])
+
+    if category == "Support":
+        if "refund" in text_lower:
+            match = re.search(
+                r"(\d+)\s*days?",
+                text_lower
+            )
+
+            if match and int(match.group(1)) > 30:
+                return True
+
+            if any(phrase in text_lower for phrase in [
+                "after 30 days",
+                "over 30 days",
+                "more than 30 days"
+            ]):
+                return True
+
+        if any(word in text_lower for word in [
+            "complaint",
+            "legal",
+            "manager",
+            "urgent"
+        ]):
+            return True
+
+    if category == "Technical":
+        return any(word in text_lower for word in [
+            "security",
+            "data loss",
+            "production",
+            "database",
+            "hack",
+            "breach",
+            "unauthorized access"
+        ])
+
+    return False
 
 def create_escalation(result_item):
 
@@ -114,23 +170,7 @@ def run_automation(
 
         response = sales_workflow.run(text)
 
-        text_lower = text.lower()
-
-        if any(word in text_lower for word in [
-            "price",
-            "cost",
-            "pricing",
-            "buy",
-            "purchase",
-            "quote",
-            "plan",
-            "discount",
-            "negotiate",
-            "contract",
-            "custom",
-            "enterprise"
-        ]):
-            needs_human = True
+        needs_human = should_escalate(category, text)
 
     elif category == "Support":
 
@@ -138,50 +178,12 @@ def run_automation(
 
         response = support_workflow.run(text)
 
-        text_lower = text.lower()
-
-
-        if "refund" in text_lower:
-
-            match = re.search(
-                r"(\d+)\s*days?",
-                text_lower
-            )
-
-            if match:
-
-                days = int(match.group(1))
-
-                if days > 30:
-                    needs_human = True
-
-            if any(phrase in text_lower for phrase in [
-                "after 30 days",
-                "over 30 days",
-                "more than 30 days"
-            ]):
-                needs_human = True
-
-        if any(word in text_lower for word in [
-            "complaint",
-            "legal",
-            "manager",
-            "urgent"
-        ]):
-            needs_human = True
+        needs_human = should_escalate(category, text)
 
     elif category == "Technical":
         text_lower = text.lower()
 
-        security_issue = any(word in text_lower for word in [
-            "security",
-            "data loss",
-            "production",
-            "database",
-            "hack",
-            "breach",
-            "unauthorized access"
-        ])
+        security_issue = should_escalate(category, text)
 
         if security_issue:
             action = "Escalate to human"
