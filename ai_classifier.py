@@ -51,7 +51,13 @@ def classify_text(text):
         "server",
         "database",
         "technical",
-        "500"
+        "500",
+        "security",
+        "data loss",
+        "production",
+        "hack",
+        "breach",
+        "unauthorized access"
     ]
 
 
