@@ -114,6 +114,36 @@ def save_conversation(result):
 
     connection.close()
 
+def get_conversation_history(customer_id, limit=10):
+
+    if not customer_id:
+        return []
+
+    connection = get_connection()
+
+    cursor = connection.cursor()
+
+    cursor.execute("""
+        SELECT
+            customer_id,
+            message_id,
+            timestamp,
+            customer_message,
+            category,
+            ai_response,
+            needs_human,
+            action
+        FROM conversations
+        WHERE customer_id = ?
+        ORDER BY id DESC
+        LIMIT ?
+    """, (customer_id, limit))
+
+    rows = cursor.fetchall()
+
+    connection.close()
+
+    return rows
 
 def save_escalation(escalation):
 

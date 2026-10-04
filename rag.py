@@ -4,7 +4,7 @@ import re
 import requests
 
 from dotenv import load_dotenv
-
+from database import get_conversation_history
 
 load_dotenv()
 
@@ -151,7 +151,7 @@ def deterministic_refund_response(question):
     )
 
 
-def generate_grounded_response(question, category):
+def generate_grounded_response(question, category, customer_id=None):
 
     refund_response = deterministic_refund_response(question)
 
@@ -165,6 +165,24 @@ def generate_grounded_response(question, category):
     retrieved = retrieve_knowledge(question)
 
     company_information = retrieved["content"]
+
+    conversation_history = get_conversation_history(
+        customer_id,
+        limit=5
+    )
+
+    history_context = ""
+
+    if conversation_history:
+        history_lines = []
+
+        for row in reversed(conversation_history):
+            history_lines.append(
+                f"Customer: {row[3]}\n"
+                f"Assistant: {row[5]}"
+            )
+
+        history_context = "\n\n".join(history_lines)
 
     if retrieved["key"] == "pricing":
 
@@ -264,6 +282,9 @@ Customer category:
 Company information:
 {company_information}
 
+Previous conversation context:
+{history_context if history_context else "No previous conversation history is available."}
+
 Customer question:
 {question}
 
@@ -288,6 +309,10 @@ General rules:
 - Return ONLY the customer-facing response.
 - Do not use placeholders.
 - Do not include a signature.
+- Previous conversation context may help understand the customer's situation,
+  but it is not a source of company policy or facts.
+- Do not treat previous AI responses as authoritative company information.
+- Use the current company information as the source of truth.
 """
 
     response = requests.post(

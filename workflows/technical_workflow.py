@@ -19,9 +19,10 @@ def clean_response(text):
 
     return text.strip() 
 
-def run(customer_message): 
+def run(customer_message, customer_id=None): 
     result = generate_grounded_response( 
-        customer_message, "Technical" ) 
+        customer_message, "Technical",
+        customer_id ) 
     response_text = clean_response( 
         result["response"] ) 
 

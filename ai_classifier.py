@@ -182,7 +182,8 @@ def run_automation(
 
         action = "Send to Support workflow"
 
-        response = support_workflow.run(text)
+        response = support_workflow.run(text,
+        customer_id)
 
         needs_human = should_escalate(category, text)
 
@@ -209,7 +210,8 @@ def run_automation(
             }
         else:
             action = "Send to Technical workflow"
-            response = technical_workflow.run(text)
+            response = technical_workflow.run(text,
+                       customer_id)
 
     else:
 
