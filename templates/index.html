@@ -1,79 +1,226 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>AI Customer Support</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            color: #1f2937;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 60px auto;
+            padding: 20px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
+        }
+
+        h1 {
+            margin-top: 0;
+            margin-bottom: 8px;
+        }
+
+        .subtitle {
+            color: #6b7280;
+            margin-bottom: 25px;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 140px;
+            padding: 15px;
+            border: 1px solid #d1d5db;
+            border-radius: 10px;
+            font-size: 16px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #2563eb;
+        }
+
+        button {
+            margin-top: 15px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            background: #2563eb;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #1d4ed8;
+        }
+
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .response-section {
+            margin-top: 30px;
+        }
+
+        .response-box {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            padding: 18px;
+            min-height: 80px;
+            white-space: pre-wrap;
+        }
+
+        .status {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #6b7280;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #9ca3af;
+            font-size: 13px;
+        }
+    </style>
 </head>
 
 <body>
 
-    <h1>Customer Support</h1>
+<div class="container">
 
-    <textarea
-        id="message"
-        rows="5"
-        cols="50"
-        placeholder="Type your message..."
-    ></textarea>
+    <div class="card">
 
-    <br><br>
+        <h1>AI Customer Support</h1>
 
-    <button onclick="sendMessage()">Send</button>
+        <p class="subtitle">
+            Ask us anything and our AI support assistant will help you.
+        </p>
 
-    <h2>Response</h2>
+        <textarea
+            id="message"
+            placeholder="Type your message here..."
+        ></textarea>
 
-    <p id="response">Waiting for message...</p>
+        <button id="sendButton" onclick="sendMessage()">
+            Send Message
+        </button>
 
-    <script>
+        <div class="response-section">
 
-        async function sendMessage() {
+            <h2>Assistant Response</h2>
 
-            const message = document.getElementById("message").value;
-            const responseBox = document.getElementById("response");
+            <div id="response" class="response-box">
+                Waiting for your message...
+            </div>
 
-            if (!message.trim()) {
-                responseBox.innerText = "Please enter a message.";
-                return;
-            }
+            <div id="status" class="status"></div>
 
-            responseBox.innerText = "Processing...";
+        </div>
 
-            try {
+    </div>
 
-                const response = await fetch("/message", {
+    <div class="footer">
+        AI Customer Support System
+    </div>
 
-                    method: "POST",
+</div>
 
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
+<script>
 
-                    body: JSON.stringify({
-                        message: message
-                    })
+async function sendMessage() {
 
-                });
+    const messageBox = document.getElementById("message");
+    const responseBox = document.getElementById("response");
+    const statusBox = document.getElementById("status");
+    const sendButton = document.getElementById("sendButton");
 
-                const data = await response.json();
+    const message = messageBox.value.trim();
 
-                if (!response.ok) {
-                    responseBox.innerText =
-                        "Server error: " + JSON.stringify(data);
-                    return;
-                }
+    if (!message) {
+        responseBox.innerText = "Please enter a message.";
+        return;
+    }
 
-                responseBox.innerText = data.response;
+    responseBox.innerText = "Processing...";
+    statusBox.innerText = "AI is processing your request...";
+    sendButton.disabled = true;
+    sendButton.innerText = "Processing...";
 
-            } catch (error) {
+    try {
 
-                console.error(error);
+        const response = await fetch("/chat", {
 
-                responseBox.innerText =
-                    "Connection error: " + error;
+            method: "POST",
 
-            }
+            headers: {
+                "Content-Type": "application/json"
+            },
+
+            body: JSON.stringify({
+                message: message
+            })
+
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+
+            responseBox.innerText =
+                "Server error: " + JSON.stringify(data);
+
+            statusBox.innerText = "";
+
+            return;
         }
 
-    </script>
+        responseBox.innerText =
+            data.response || "No response received.";
+
+        statusBox.innerText =
+            data.needs_human
+                ? "Your request has been forwarded for human review."
+                : "Handled by AI support.";
+
+    } catch (error) {
+
+        console.error(error);
+
+        responseBox.innerText =
+            "Connection error. Please try again.";
+
+        statusBox.innerText = "";
+
+    } finally {
+
+        sendButton.disabled = false;
+        sendButton.innerText = "Send Message";
+
+    }
+}
+
+</script>
 
 </body>
 </html>

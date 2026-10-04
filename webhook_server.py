@@ -1,4 +1,6 @@
 import os
+import uuid
+from datetime import datetime
 
 from flask import Flask, request, jsonify, render_template, redirect
 from dotenv import load_dotenv
@@ -68,6 +70,90 @@ def resolve_case(escalation_id):
     resolve_escalation(escalation_id)
 
     return redirect("/dashboard")
+
+@app.route("/chat", methods=["POST"])
+def customer_chat():
+
+    try:
+
+        data = request.get_json()
+
+    except Exception:
+
+        return jsonify({
+            "error": "Invalid JSON data"
+        }), 400
+
+
+    if not data:
+
+        return jsonify({
+            "error": "No JSON data received"
+        }), 400
+
+
+    text = data.get("message")
+
+
+    if not text or not isinstance(text, str) or not text.strip():
+
+        return jsonify({
+            "error": "Message must be a non-empty string"
+        }), 400
+
+
+    if len(text) > 2000:
+
+        return jsonify({
+            "error": "Message is too long. Maximum length is 2000 characters."
+        }), 400
+
+
+    try:
+
+        customer_id = f"WEB-{uuid.uuid4().hex[:12].upper()}"
+        message_id = f"WEBMSG-{uuid.uuid4().hex[:12].upper()}"
+        timestamp = datetime.now().isoformat()
+
+        result = run_automation(
+            text,
+            customer_id,
+            message_id,
+            timestamp
+        )
+
+
+        if result.get("response"):
+
+            response_text = result["response"]["response"]
+
+        else:
+
+            response_text = (
+                "Thank you for your message. "
+                "How can we help you?"
+            )
+
+
+        return jsonify({
+            "request_id": result["response"]["request_id"],
+            "category": result["category"],
+            "needs_human": result["needs_human"],
+            "response": response_text
+        })
+
+
+    except Exception as error:
+
+        print("Customer chat error:", error)
+
+        return jsonify({
+            "response": (
+                "Sorry, we're unable to process "
+                "your request right now. "
+                "Please try again later."
+            )
+        }), 500
 
 
 @app.route("/api/v1/message", methods=["POST"])
@@ -193,3 +279,4 @@ if __name__ == "__main__":
         port=5000,
         debug=False
     )
+
