@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 from datetime import datetime
 
@@ -111,7 +112,13 @@ def customer_chat():
 
     try:
 
-        customer_id = f"WEB-{uuid.uuid4().hex[:12].upper()}"
+        customer_id = data.get("customer_id")
+
+        if (
+            not isinstance(customer_id, str)
+            or not re.fullmatch(r"WEB-[A-F0-9]{12}", customer_id)
+        ):
+            customer_id = f"WEB-{uuid.uuid4().hex[:12].upper()}"
         message_id = f"WEBMSG-{uuid.uuid4().hex[:12].upper()}"
         timestamp = datetime.now().isoformat()
 

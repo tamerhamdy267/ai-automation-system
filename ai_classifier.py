@@ -6,6 +6,7 @@ from workflows import sales_workflow
 from workflows import support_workflow
 from workflows import technical_workflow
 from database import save_escalation
+from rag import is_customer_memory_question, save_detected_customer_memory
 
 from conversation_logger import log_conversation
 
@@ -163,6 +164,48 @@ def run_automation(
     timestamp=None
 ):
 
+    # Customer memory must be handled before normal classification.
+    save_detected_customer_memory(
+        customer_id,
+        text
+    )
+
+    # Customer-memory questions must not go through
+    # Sales / Support / Technical / Other classification.
+    if is_customer_memory_question(text):
+
+        from rag import answer_customer_memory_question
+
+        response = {
+            "request_id": str(uuid.uuid4()),
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "customer_message": text,
+            "response": answer_customer_memory_question(
+                text,
+                customer_id
+            ),
+            "knowledge_key": "customer_memory",
+            "similarity_score": 1.0
+        }
+
+        result_item = {
+            "customer_id": customer_id,
+            "message_id": message_id,
+            "timestamp": timestamp,
+            "text": text,
+            "category": "Customer Memory",
+            "action": "Answer from customer memory",
+            "needs_human": False,
+            "response": response
+        }
+
+        log_conversation(result_item)
+
+        print("AI Category: Customer Memory")
+        print("Needs human: False")
+
+        return result_item
+
     category = classify_text(text)
 
     print("AI Category:", category)
@@ -176,25 +219,38 @@ def run_automation(
 
         response = sales_workflow.run(text)
 
-        needs_human = should_escalate(category, text)
+        needs_human = should_escalate(
+            category,
+            text
+        )
 
     elif category == "Support":
 
         action = "Send to Support workflow"
 
-        response = support_workflow.run(text,
-        customer_id)
+        response = support_workflow.run(
+            text,
+            customer_id
+        )
 
-        needs_human = should_escalate(category, text)
+        needs_human = should_escalate(
+            category,
+            text
+        )
 
     elif category == "Technical":
-        text_lower = text.lower()
 
-        security_issue = should_escalate(category, text)
+        security_issue = should_escalate(
+            category,
+            text
+        )
 
         if security_issue:
+
             action = "Escalate to human"
+
             needs_human = True
+
             response = {
                 "request_id": str(uuid.uuid4()),
                 "timestamp": datetime.now().isoformat(timespec="seconds"),
@@ -208,14 +264,32 @@ def run_automation(
                 "knowledge_key": "security_incident",
                 "similarity_score": 1.0
             }
+
         else:
+
             action = "Send to Technical workflow"
-            response = technical_workflow.run(text,
-                       customer_id)
+
+            response = technical_workflow.run(
+                text,
+                customer_id
+            )
 
     else:
 
         action = "No action required"
+
+        response = {
+            "request_id": str(uuid.uuid4()),
+            "timestamp": datetime.now().isoformat(timespec="seconds"),
+            "customer_message": text,
+            "response": (
+                "Thank you for your message. "
+                "Could you please provide a little more detail "
+                "about how we can help?"
+            ),
+            "knowledge_key": "general",
+            "similarity_score": 0.0
+        }
 
     print("Needs human:", needs_human)
 
