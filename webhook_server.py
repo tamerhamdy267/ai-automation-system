@@ -1,9 +1,10 @@
 import os
 import re
 import uuid
+import time
 from datetime import datetime
 
-from flask import Flask, request, jsonify, render_template, redirect
+from flask import Flask, request, jsonify, render_template, redirect, Response
 from dotenv import load_dotenv
 
 from ai_classifier import run_automation
@@ -19,6 +20,35 @@ load_dotenv()
 
 API_KEY = os.getenv("AI_API_KEY")
 
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+
+
+def require_admin_auth():
+
+    if not ADMIN_USERNAME or not ADMIN_PASSWORD:
+        return Response(
+            "Admin authentication is not configured.",
+            status=503
+        )
+
+    auth = request.authorization
+
+    if (
+        not auth
+        or auth.username != ADMIN_USERNAME
+        or auth.password != ADMIN_PASSWORD
+    ):
+        return Response(
+            "Authentication required.",
+            status=401,
+            headers={
+                "WWW-Authenticate": 'Basic realm="AI Automation Admin"'
+            }
+        )
+
+    return None
+
 print(
     "AI_API_KEY loaded:",
     bool(API_KEY),
@@ -28,6 +58,10 @@ print(
 
 app = Flask(__name__)
 
+CHAT_RATE_LIMIT = 30
+CHAT_RATE_WINDOW = 60
+
+chat_requests = {}
 
 @app.route("/health")
 def health():
@@ -57,6 +91,11 @@ def home():
 @app.route("/dashboard")
 def dashboard():
 
+    auth_error = require_admin_auth()
+
+    if auth_error:
+        return auth_error
+
     escalations = get_pending_escalations()
 
     return render_template(
@@ -68,12 +107,39 @@ def dashboard():
 @app.route("/resolve/<int:escalation_id>", methods=["POST"])
 def resolve_case(escalation_id):
 
+    auth_error = require_admin_auth()
+
+    if auth_error:
+        return auth_error
+
     resolve_escalation(escalation_id)
 
     return redirect("/dashboard")
 
 @app.route("/chat", methods=["POST"])
 def customer_chat():
+
+    client_ip = request.remote_addr or "unknown"
+    now = time.time()
+
+    recent_requests = chat_requests.get(client_ip, [])
+
+    recent_requests = [
+        request_time
+        for request_time in recent_requests
+        if now - request_time < CHAT_RATE_WINDOW
+    ]
+
+    if len(recent_requests) >= CHAT_RATE_LIMIT:
+
+        chat_requests[client_ip] = recent_requests
+
+        return jsonify({
+            "error": "Too many requests. Please try again later."
+        }), 429
+
+    recent_requests.append(now)
+    chat_requests[client_ip] = recent_requests
 
     try:
 
@@ -189,10 +255,7 @@ def receive_message():
 
     if not API_KEY or provided_api_key != API_KEY:
         return jsonify({
-            "error": "Unauthorized",
-            "server_key_loaded": bool(API_KEY),
-            "server_key_length": len(API_KEY) if API_KEY else 0,
-            "provided_key_length": len(provided_api_key) if provided_api_key else 0
+            "error": "Unauthorized"
         }), 401
 
 
@@ -201,6 +264,23 @@ def receive_message():
     customer_id = data.get("customer_id")
     message_id = data.get("message_id")
     timestamp = data.get("timestamp")
+
+    if (
+        not isinstance(customer_id, str)
+        or not re.fullmatch(r"WEB-[A-F0-9]{12}", customer_id)
+    ):
+        return jsonify({
+            "error": "Invalid customer_id"
+        }), 400
+
+
+    if (
+        not isinstance(message_id, str)
+        or not message_id.strip()
+    ):
+        return jsonify({
+            "error": "message_id is required"
+        }), 400
 
 
     if message_id and is_message_processed(message_id):
