@@ -384,8 +384,9 @@ def receive_message():
 
 
     except Exception as error:
-
-        print("Automation error:", error)
+        import traceback
+        print("Automation error:", repr(error), flush=True)
+        traceback.print_exc()
     
 
         return jsonify({
