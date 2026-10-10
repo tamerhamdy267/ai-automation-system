@@ -642,6 +642,7 @@ def generate_grounded_response(
     client_id=None,
     customer_id=None
 ):
+    print(f"DEBUG registry lookup client_id={client_id!r}", flush=True)
     client_config = get_client_config(client_id)
 
     # ---------------------------------------------------------
