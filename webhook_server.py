@@ -230,8 +230,9 @@ def customer_chat():
 
 
     except Exception as error:
-
-        print("Customer chat error:", error)
+        import traceback
+        print("Customer chat error:", repr(error), flush=True)
+        traceback.print_exc()
 
         return jsonify({
             "response": (
