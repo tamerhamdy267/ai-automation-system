@@ -28,11 +28,12 @@ def clean_response(text):
     return text.strip()
 
 
-def run(customer_message, customer_id=None):
+def run(customer_message, client_id=None, customer_id=None):
 
     result = generate_grounded_response(
         customer_message,
         "Support",
+        client_id,
         customer_id
     )
 

@@ -222,7 +222,9 @@ def run_automation(
 
         action = "Send to Sales workflow"
 
-        response = sales_workflow.run(text)
+        response = sales_workflow.run(text,
+            client_id,
+            customer_id)
 
         needs_human = should_escalate(
             category,
@@ -235,6 +237,7 @@ def run_automation(
 
         response = support_workflow.run(
             text,
+            client_id,
             customer_id
         )
 
@@ -276,6 +279,7 @@ def run_automation(
 
             response = technical_workflow.run(
                 text,
+                client_id,
                 customer_id
             )
 
