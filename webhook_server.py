@@ -6,6 +6,8 @@ from datetime import datetime
 
 from flask import Flask, request, jsonify, render_template, redirect, Response
 from dotenv import load_dotenv
+from client_config import load_client_config
+from client_registry import get_client_config
 
 from ai_classifier import run_automation
 from database import get_pending_escalations
@@ -58,6 +60,16 @@ print(
 
 app = Flask(__name__)
 
+CLIENT_CONFIG = load_client_config()
+
+print(
+    "Client loaded:",
+    CLIENT_CONFIG["client_id"],
+    "-",
+    CLIENT_CONFIG["business_name"]
+)
+CLIENT_ID = CLIENT_CONFIG["client_id"]
+
 CHAT_RATE_LIMIT = 30
 CHAT_RATE_WINDOW = 60
 
@@ -96,7 +108,7 @@ def dashboard():
     if auth_error:
         return auth_error
 
-    escalations = get_pending_escalations()
+    escalations = get_pending_escalations(CLIENT_ID)
 
     return render_template(
         "dashboard.html",
@@ -112,7 +124,7 @@ def resolve_case(escalation_id):
     if auth_error:
         return auth_error
 
-    resolve_escalation(escalation_id)
+    resolve_escalation(escalation_id, CLIENT_ID)
 
     return redirect("/dashboard")
 
@@ -190,6 +202,7 @@ def customer_chat():
 
         result = run_automation(
             text,
+            CLIENT_ID,
             customer_id,
             message_id,
             timestamp
@@ -251,13 +264,37 @@ def receive_message():
         }), 400
 
 
+    client_id = request.headers.get("X-Client-ID")
     provided_api_key = request.headers.get("X-API-Key")
 
-    if not API_KEY or provided_api_key != API_KEY:
+    if not client_id:
+        return jsonify({
+            "error": "X-Client-ID header is required"
+        }), 400
+
+
+    try:
+        client_config = get_client_config(client_id)
+
+    except ValueError:
+        return jsonify({
+            "error": "Unknown client_id"
+        }), 400
+
+
+    CLIENT_API_KEYS = {
+        "demo_client": os.getenv("DEMO_CLIENT_API_KEY"),
+        "client_b": os.getenv("CLIENT_B_API_KEY")
+    }
+
+
+    expected_api_key = CLIENT_API_KEYS.get(client_id)
+
+
+    if not expected_api_key or provided_api_key != expected_api_key:
         return jsonify({
             "error": "Unauthorized"
         }), 401
-
 
     text = data.get("message")
 
@@ -283,7 +320,7 @@ def receive_message():
         }), 400
 
 
-    if message_id and is_message_processed(message_id):
+    if message_id and is_message_processed(client_id, message_id):
 
         return jsonify({
             "status": "duplicate",
@@ -314,11 +351,12 @@ def receive_message():
 
         if message_id:
 
-            mark_message_processed(message_id)
+            mark_message_processed(client_id, message_id)
 
 
         result = run_automation(
             text,
+            client_id,
             customer_id,
             message_id,
             timestamp

@@ -2,7 +2,7 @@ import json
 import os
 import re
 import requests
-
+from client_registry import get_client_config
 from dotenv import load_dotenv
 
 from database import (
@@ -13,7 +13,6 @@ from database import (
 
 
 load_dotenv()
-
 
 OLLAMA_PROXY_URL = os.getenv(
     "OLLAMA_PROXY_URL",
@@ -388,11 +387,12 @@ def detect_customer_memory(text):
 
 
 def save_detected_customer_memory(
+    client_id,
     customer_id,
     question
 ):
 
-    if not customer_id:
+    if not client_id or not customer_id:
         return None
 
     memory = detect_customer_memory(question)
@@ -401,6 +401,7 @@ def save_detected_customer_memory(
         return None
 
     save_customer_memory(
+        client_id,
         customer_id,
         memory["key"],
         memory["value"]
@@ -409,7 +410,7 @@ def save_detected_customer_memory(
     print(
         f"Customer memory saved: "
         f"{memory['key']} = {memory['value']} "
-        f"for {customer_id}"
+        f"for {client_id}/{customer_id}"
     )
 
     return memory
@@ -483,11 +484,13 @@ def is_customer_memory_question(question):
 
 def answer_customer_memory_question(
     question,
+    client_id,
     customer_id
 ):
 
     memories = get_customer_memory(
-        customer_id
+        client_id,
+        customer_id,
     )
 
     if not memories:
@@ -636,8 +639,10 @@ Return only the customer-facing answer.
 def generate_grounded_response(
     question,
     category,
+    client_id=None,
     customer_id=None
 ):
+    client_config = get_client_config(client_id)
 
     # ---------------------------------------------------------
     # Save explicit personal information FIRST.
@@ -647,6 +652,7 @@ def generate_grounded_response(
     # ---------------------------------------------------------
 
     save_detected_customer_memory(
+        client_id,
         customer_id,
         question
     )
@@ -659,6 +665,7 @@ def generate_grounded_response(
 
         answer = answer_customer_memory_question(
             question,
+            client_id,
             customer_id
         )
 
@@ -697,6 +704,7 @@ def generate_grounded_response(
     # ---------------------------------------------------------
 
     conversation_history = get_conversation_history(
+        client_id,
         customer_id,
         limit=5
     )
@@ -827,60 +835,50 @@ Never request passwords, API keys, access tokens, or credentials.
 Answer using only the company information provided.
 """
 
+
     # ---------------------------------------------------------
     # Normal company RAG prompt
     # ---------------------------------------------------------
+    business_name = client_config["business_name"]
+    assistant_name = client_config["ai"]["assistant_name"]
+    language = client_config["ai"]["language"]
+    tone = client_config["ai"]["tone"]
 
     prompt = f"""
-You are a customer support AI assistant.
+You are {assistant_name}, the customer support AI assistant for {business_name}.
+
+LANGUAGE:
+{language}
+
+TONE:
+{tone}
 
 COMPANY INFORMATION:
 
 {company_information}
 
-
 CUSTOMER CONVERSATION CONTEXT:
-
-{
-    history_context
-    if history_context
-    else "No previous conversation history is available."
-}
-
+{history_context if history_context else "No previous conversation context available."}
 
 CURRENT CUSTOMER QUESTION:
-
 {question}
 
-
 RULES:
-
 1. Use the company information for company facts,
    policies, procedures, prices and limits.
-
 2. Customer-specific information may only come from the
    current customer conversation or this customer's stored memory.
-
 3. Never invent customer information.
-
 4. Never invent company information.
-
 5. Never use another customer's information.
-
 6. Never request passwords, API keys, access tokens,
    or credentials.
-
 7. Be concise, clear, friendly and professional.
-
 8. Return ONLY the customer-facing answer.
-
 9. Do not use placeholders.
-
 10. Do not include a signature.
 
-
 SPECIFIC TASK:
-
 {instruction}
 """
 

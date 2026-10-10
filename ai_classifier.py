@@ -33,6 +33,7 @@ def classify_text(text):
     support_keywords = [
         "order",
         "refund",
+        "charged",
         "complaint",
         "problem",
         "issue",
@@ -142,6 +143,7 @@ def create_escalation(result_item):
         return
 
     escalation = {
+        "client_id": result_item["client_id"],
         "customer_id": result_item["customer_id"],
         "message_id": result_item["message_id"],
         "request_id": result_item["response"]["request_id"],
@@ -159,6 +161,7 @@ def create_escalation(result_item):
 
 def run_automation(
     text,
+    client_id=None,
     customer_id=None,
     message_id=None,
     timestamp=None
@@ -166,7 +169,7 @@ def run_automation(
 
     # Customer memory must be handled before normal classification.
     save_detected_customer_memory(
-        customer_id,
+        client_id,customer_id,
         text
     )
 
@@ -182,6 +185,7 @@ def run_automation(
             "customer_message": text,
             "response": answer_customer_memory_question(
                 text,
+                client_id,
                 customer_id
             ),
             "knowledge_key": "customer_memory",
@@ -189,6 +193,7 @@ def run_automation(
         }
 
         result_item = {
+            "client_id": client_id,
             "customer_id": customer_id,
             "message_id": message_id,
             "timestamp": timestamp,
@@ -294,6 +299,7 @@ def run_automation(
     print("Needs human:", needs_human)
 
     result_item = {
+        "client_id": client_id,
         "customer_id": customer_id,
         "message_id": message_id,
         "timestamp": timestamp,

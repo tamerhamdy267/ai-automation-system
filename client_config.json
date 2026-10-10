@@ -1,0 +1,26 @@
+{
+    "client_id": "demo_client",
+    "business_name": "Demo Business",
+
+    "ai": {
+        "assistant_name": "AI Support Assistant",
+        "language": "English",
+        "tone": "professional and friendly"
+    },
+
+    "support": {
+        "enabled": true
+    },
+
+    "sales": {
+        "enabled": true
+    },
+
+    "technical": {
+        "enabled": true
+    },
+
+    "escalation": {
+        "enabled": true
+    }
+}
